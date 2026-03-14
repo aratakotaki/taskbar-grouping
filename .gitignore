@@ -7,6 +7,10 @@ dist-ssr/
 
 # Tauri build artifacts
 src-tauri/target/
+target/
+
+# Generated schemas (Tauri generates these at runtime)
+src-tauri/gen/
 
 # Logs
 *.log
