@@ -16,9 +16,19 @@ struct SavedApp {
     package_family_name: String,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct Group {
+    id: String,
+    name: String,
+    apps: Vec<SavedApp>,
+}
+
 #[derive(serde::Serialize, serde::Deserialize)]
 struct AppData {
     selected_apps: Vec<SavedApp>,
+    #[serde(default)]
+    groups: Vec<Group>,
 }
 
 fn get_data_file_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -30,13 +40,26 @@ fn get_data_file_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> 
     Ok(app_data_dir.join("selected_apps.json"))
 }
 
+fn load_app_data(path: &PathBuf) -> AppData {
+    if path.exists() {
+        if let Ok(json) = fs::read_to_string(path) {
+            return serde_json::from_str::<AppData>(&json).unwrap_or_else(|e| {
+                eprintln!("Warning: failed to parse app data, using defaults: {}", e);
+                AppData { selected_apps: vec![], groups: vec![] }
+            });
+        }
+    }
+    AppData { selected_apps: vec![], groups: vec![] }
+}
+
 #[tauri::command]
 fn save_selected_apps(
     app_handle: tauri::AppHandle,
     apps: Vec<SavedApp>,
 ) -> Result<(), String> {
     let path = get_data_file_path(&app_handle)?;
-    let data = AppData { selected_apps: apps };
+    let mut data = load_app_data(&path);
+    data.selected_apps = apps;
     let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
     fs::write(&path, json).map_err(|e| e.to_string())?;
     Ok(())
@@ -55,6 +78,31 @@ fn load_selected_apps(app_handle: tauri::AppHandle) -> Result<Vec<SavedApp>, Str
 }
 
 #[tauri::command]
+fn save_groups(
+    app_handle: tauri::AppHandle,
+    groups: Vec<Group>,
+) -> Result<(), String> {
+    let path = get_data_file_path(&app_handle)?;
+    let mut data = load_app_data(&path);
+    data.groups = groups;
+    let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
+    fs::write(&path, json).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn load_groups(app_handle: tauri::AppHandle) -> Result<Vec<Group>, String> {
+    let path = get_data_file_path(&app_handle)?;
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let json = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let data: AppData = serde_json::from_str(&json)
+        .map_err(|e| format!("Failed to parse saved data: {}", e))?;
+    Ok(data.groups)
+}
+
+#[tauri::command]
 fn list_uwp_apps() -> Result<String, String> {
     let output = Command::new("powershell")
         .arg("-Command")
@@ -69,7 +117,8 @@ fn list_uwp_apps() -> Result<String, String> {
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         Err(stderr.to_string())
-    }}
+    }
+}
 
 #[tauri::command]
 fn launch_uwp_app(app_id: &str) -> Result<(), String> {
@@ -106,7 +155,9 @@ pub fn run() {
             list_uwp_apps,
             launch_uwp_app,
             save_selected_apps,
-            load_selected_apps
+            load_selected_apps,
+            save_groups,
+            load_groups
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]
