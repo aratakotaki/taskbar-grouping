@@ -107,7 +107,177 @@ button:active {
   line-height: 2;
 }
 
+
+.groups-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.group-card {
+  border: 2px dashed #ccc;
+  border-radius: 10px;
+  padding: 1rem;
+  min-width: 200px;
+  flex: 1 1 200px;
+  transition: border-color 0.2s, background-color 0.2s;
+  background-color: #fafafa;
+}
+
+.group-card.drop-over {
+  border-color: #646cff;
+  background-color: #f0f0ff;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+}
+
+.group-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1a1a2e;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-name-input {
+  font-weight: 600;
+  font-size: 1rem;
+  flex: 1;
+  width: auto;
+  padding: 0.2rem 0.5rem;
+}
+
+.group-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.btn-small {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background-color: #646cff;
+  color: #fff;
+  transition: background-color 0.2s;
+}
+
+.btn-small:hover {
+  background-color: #535bf2;
+}
+
+.btn-secondary {
+  background-color: #888;
+}
+
+.btn-secondary:hover {
+  background-color: #666;
+}
+
+.btn-danger {
+  background-color: #e55;
+}
+
+.btn-danger:hover {
+  background-color: #c33;
+}
+
+.group-empty {
+  color: #aaa;
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 0.5rem 0;
+  margin: 0;
+}
+
+.group-app-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.group-app-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  background-color: #f0f0f0;
+  font-size: 0.9rem;
+}
+
+.group-app-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.draggable-app {
+  cursor: grab;
+  padding: 0.25rem 0;
+}
+
+.draggable-app:active {
+  cursor: grabbing;
+}
+
+.group-select {
+  margin-left: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  cursor: pointer;
+}
+
 @media (prefers-color-scheme: dark) {
+  .group-card {
+    border-color: #444;
+    background-color: #2a2a3e;
+  }
+
+  .group-card.drop-over {
+    border-color: #646cff;
+    background-color: #2e2e5e;
+  }
+
+  .group-name {
+    color: #e0e0e0;
+  }
+
+  .group-app-item {
+    background-color: #3a3a5e;
+    color: #e0e0e0;
+  }
+
+  .group-empty {
+    color: #666;
+  }
+
+  .group-select {
+    background-color: #2a2a3e;
+    color: #f6f6f6;
+    border-color: #555;
+  }
+}
+
   :root {
     color: #f6f6f6;
     background-color: #1a1a2e;
