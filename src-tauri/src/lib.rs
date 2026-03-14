@@ -24,11 +24,37 @@ fn list_uwp_apps() -> Result<String, String> {
         Err(stderr.to_string())
     }}
 
+#[tauri::command]
+fn launch_uwp_app(app_id: &str) -> Result<(), String> {
+    // Validate app_id to only allow characters expected in a UWP app identifier
+    // (PackageFamilyName format: alphanumeric, dots, underscores, hyphens, plus '!' for the entry point)
+    if app_id.is_empty()
+        || !app_id
+            .chars()
+            .all(|c| c.is_alphanumeric() || "._-!".contains(c))
+    {
+        return Err("Invalid app_id format".to_string());
+    }
+    let shell_path = format!("shell:AppsFolder\\{}", app_id);
+    let output = Command::new("powershell")
+        .arg("-Command")
+        .arg(format!("Start-Process explorer.exe '{}'", shell_path))
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(stderr.to_string())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, list_uwp_apps])
+        .invoke_handler(tauri::generate_handler![greet, list_uwp_apps, launch_uwp_app])
         .setup(|app| {
             #[cfg(debug_assertions)]
             {
