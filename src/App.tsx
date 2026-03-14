@@ -28,6 +28,7 @@ function App() {
   const [uwpApps, setUwpApps] = useState<UwpApp[]>([]);
   const [uwpError, setUwpError] = useState<string | null>(null);
   const [uwpLoading, setUwpLoading] = useState(false);
+  const [launchError, setLaunchError] = useState<string | null>(null);
 
   async function greet() {
     // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -44,6 +45,15 @@ function App() {
       setUwpError(String(err));
     } finally {
       setUwpLoading(false);
+    }
+  }
+
+  async function launchUwpApp(packageFamilyName: string) {
+    setLaunchError(null);
+    try {
+      await invoke("launch_uwp_app", { appId: `${packageFamilyName}!App` });
+    } catch (err) {
+      setLaunchError(String(err));
     }
   }
 
@@ -82,6 +92,7 @@ function App() {
           {uwpLoading ? "Loading..." : "Fetch UWP Apps"}
         </button>
         {uwpError && <p style={{ color: "red" }}>{uwpError}</p>}
+        {launchError && <p style={{ color: "red" }}>{launchError}</p>}
         {uwpApps.length > 0 && (
           <ul style={{ textAlign: "left", marginTop: "1rem" }}>
             {uwpApps.map((app) => (
@@ -89,6 +100,10 @@ function App() {
                 <strong>{app.name}</strong>
                 <br />
                 <small>{app.packageFamilyName}</small>
+                <br />
+                <button onClick={() => launchUwpApp(app.packageFamilyName)}>
+                  Launch
+                </button>
               </li>
             ))}
           </ul>
