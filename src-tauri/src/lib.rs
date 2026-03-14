@@ -1,3 +1,5 @@
+use std::fs;
+use std::path::PathBuf;
 use std::process::Command;
 use tauri::Manager;
 
@@ -5,6 +7,51 @@ use tauri::Manager;
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("こんにちは, {}! Tauriのバックエンドからのメッセージです。", name)
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct SavedApp {
+    name: String,
+    package_family_name: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct AppData {
+    selected_apps: Vec<SavedApp>,
+}
+
+fn get_data_file_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
+    fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
+    Ok(app_data_dir.join("selected_apps.json"))
+}
+
+#[tauri::command]
+fn save_selected_apps(
+    app_handle: tauri::AppHandle,
+    apps: Vec<SavedApp>,
+) -> Result<(), String> {
+    let path = get_data_file_path(&app_handle)?;
+    let data = AppData { selected_apps: apps };
+    let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
+    fs::write(&path, json).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn load_selected_apps(app_handle: tauri::AppHandle) -> Result<Vec<SavedApp>, String> {
+    let path = get_data_file_path(&app_handle)?;
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let json = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let data: AppData = serde_json::from_str(&json)
+        .map_err(|e| format!("Failed to parse saved data: {}", e))?;
+    Ok(data.selected_apps)
 }
 
 #[tauri::command]
@@ -54,7 +101,13 @@ fn launch_uwp_app(app_id: &str) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, list_uwp_apps, launch_uwp_app])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            list_uwp_apps,
+            launch_uwp_app,
+            save_selected_apps,
+            load_selected_apps
+        ])
         .setup(|app| {
             #[cfg(debug_assertions)]
             {
