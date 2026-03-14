@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 interface UwpApp {
@@ -22,6 +22,13 @@ function parseUwpApps(raw: string): UwpApp[] {
   return apps;
 }
 
+type SaveStatusKind = "success" | "error";
+
+interface SaveStatus {
+  kind: SaveStatusKind;
+  message: string;
+}
+
 function App() {
   const [greetMsg, setGreetMsg] = useState("");
   const [name, setName] = useState("");
@@ -29,6 +36,22 @@ function App() {
   const [uwpError, setUwpError] = useState<string | null>(null);
   const [uwpLoading, setUwpLoading] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
+  const [selectedApps, setSelectedApps] = useState<UwpApp[]>([]);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Load persisted selected apps on startup
+  useEffect(() => {
+    async function loadApps() {
+      try {
+        const apps: UwpApp[] = await invoke("load_selected_apps");
+        setSelectedApps(apps);
+      } catch (err) {
+        setLoadError(`選択済みアプリの読み込みに失敗しました: ${String(err)}`);
+      }
+    }
+    loadApps();
+  }, []);
 
   async function greet() {
     // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -55,6 +78,34 @@ function App() {
     } catch (err) {
       setLaunchError(String(err));
     }
+  }
+
+  async function persistApps(apps: UwpApp[]) {
+    setSaveStatus(null);
+    try {
+      await invoke("save_selected_apps", { apps });
+      setSaveStatus({ kind: "success", message: "保存しました ✓" });
+      setTimeout(() => setSaveStatus(null), 2000);
+    } catch (err) {
+      setSaveStatus({ kind: "error", message: `保存に失敗しました: ${String(err)}` });
+    }
+  }
+
+  async function selectApp(app: UwpApp) {
+    if (selectedApps.some((a) => a.packageFamilyName === app.packageFamilyName)) {
+      return;
+    }
+    const newSelected = [...selectedApps, app];
+    setSelectedApps(newSelected);
+    await persistApps(newSelected);
+  }
+
+  async function removeApp(packageFamilyName: string) {
+    const newSelected = selectedApps.filter(
+      (a) => a.packageFamilyName !== packageFamilyName
+    );
+    setSelectedApps(newSelected);
+    await persistApps(newSelected);
   }
 
   return (
@@ -87,15 +138,18 @@ function App() {
       )}
 
       <div className="info-box">
-        <h2>UWP アプリ管理</h2>
-        <button onClick={fetchUwpApps} disabled={uwpLoading}>
-          {uwpLoading ? "Loading..." : "Fetch UWP Apps"}
-        </button>
-        {uwpError && <p style={{ color: "red" }}>{uwpError}</p>}
-        {launchError && <p style={{ color: "red" }}>{launchError}</p>}
-        {uwpApps.length > 0 && (
+        <h2>選択済み UWP アプリ</h2>
+        {loadError && <p style={{ color: "red" }}>{loadError}</p>}
+        {saveStatus && (
+          <p style={{ color: saveStatus.kind === "success" ? "green" : "red" }}>
+            {saveStatus.message}
+          </p>
+        )}
+        {selectedApps.length === 0 ? (
+          <p style={{ color: "#888" }}>選択済みのアプリはありません。</p>
+        ) : (
           <ul style={{ textAlign: "left", marginTop: "1rem" }}>
-            {uwpApps.map((app) => (
+            {selectedApps.map((app) => (
               <li key={app.packageFamilyName}>
                 <strong>{app.name}</strong>
                 <br />
@@ -104,8 +158,50 @@ function App() {
                 <button onClick={() => launchUwpApp(app.packageFamilyName)}>
                   Launch
                 </button>
+                <button
+                  onClick={() => removeApp(app.packageFamilyName)}
+                  style={{ marginLeft: "0.5rem" }}
+                >
+                  削除
+                </button>
               </li>
             ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="info-box">
+        <h2>UWP アプリ管理</h2>
+        <button onClick={fetchUwpApps} disabled={uwpLoading}>
+          {uwpLoading ? "Loading..." : "Fetch UWP Apps"}
+        </button>
+        {uwpError && <p style={{ color: "red" }}>{uwpError}</p>}
+        {launchError && <p style={{ color: "red" }}>{launchError}</p>}
+        {uwpApps.length > 0 && (
+          <ul style={{ textAlign: "left", marginTop: "1rem" }}>
+            {uwpApps.map((app) => {
+              const isSelected = selectedApps.some(
+                (a) => a.packageFamilyName === app.packageFamilyName
+              );
+              return (
+                <li key={app.packageFamilyName}>
+                  <strong>{app.name}</strong>
+                  <br />
+                  <small>{app.packageFamilyName}</small>
+                  <br />
+                  <button onClick={() => launchUwpApp(app.packageFamilyName)}>
+                    Launch
+                  </button>
+                  <button
+                    onClick={() => selectApp(app)}
+                    disabled={isSelected}
+                    style={{ marginLeft: "0.5rem" }}
+                  >
+                    {isSelected ? "選択済み" : "選択"}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
